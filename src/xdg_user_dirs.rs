@@ -6,8 +6,6 @@ use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::str;
 
-use option_ext::OptionExt;
-
 /// Returns all XDG user directories obtained from $(XDG_CONFIG_HOME)/user-dirs.dirs.
 pub fn all(home_dir_path: &Path, user_dir_file_path: &Path) -> HashMap<String, PathBuf> {
     let bytes = read_all(user_dir_file_path).unwrap_or(Vec::new());
@@ -34,13 +32,15 @@ fn parse_user_dirs(home_dir: &Path, user_dir: Option<&str>, bytes: &[u8]) -> Has
         let key = if key.starts_with(b"XDG_") && key.ends_with(b"_DIR") {
             match str::from_utf8(&key[4..key.len()-4]) {
                 Ok(key) =>
-                    if user_dir.contains(&key) {
-                        single_dir_found = true;
-                        key
-                    } else if user_dir.is_none() {
-                        key
-                    } else {
-                        continue
+                    match user_dir {
+                        Some(user_dir) if user_dir == key => {
+                            single_dir_found = true;
+                            key
+                        }
+                        Some(_) => {
+                            continue;
+                        }
+                        None => key,
                     },
                 Err(_)  => continue,
             }
